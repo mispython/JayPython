@@ -1,107 +1,137 @@
-USE DB_SMF
-GO
-
-DECLARE @ProcDate DATETIME
-DECLARE @PrevYear DATETIME
-SELECT TOP 1 @ProcDate = ProcessDate FROM ProcessDate 
-SET @PrevYear = DATEADD(year, -1, @ProcDate)
+SAS version
 
 
-SELECT 
-	ISNULL(cmst.ClntTrdgCode,'') as 'Client Code',
-	ISNULL(cmst.ClntCDSNo,'') as 'CDS A/C No',
-	ISNULL(cmst.ProdCode,'') as 'Product Type',
-	ISNULL(mcbr.CoBrchCode,'') as 'Branch Code',
-	ISNULL(mcbr.CoRegionCode,'') as 'Region Code',
-	CAST(ROUND(ISNULL( YR.TOVR , 0),2) as VARCHAR(20)) as 'YTD Turnover',
-	CAST(ROUND(ISNULL( PREVYR.TOVR , 0),2) as VARCHAR(20)) as 'Previous Year Turnover',
-	CAST(ROUND(ISNULL( YR.BRKG , 0),2) as VARCHAR(20)) as 'YTD Brokerage',
-	CAST(ROUND(ISNULL( PREVYR.BRKG , 0),2) as VARCHAR(20)) as 'Previous Year Brokerage',
-	CASE cmst.ClntStat 
-		WHEN 'P' THEN 'Application pending review and approval '
-		WHEN 'R' THEN 'Application rejected'
-		WHEN 'A' THEN 'Application approved '
-		WHEN 'B' THEN 'Suspend Purchases'
-		WHEN 'S' THEN 'Suspend Sell'
-		WHEN 'L' THEN 'Suspend Both Purchase And Sales'
-		WHEN 'T' THEN 'Activated for trading'
-		WHEN 'C' THEN 'Closed'
-	END as 'A/C Status',
-	CAST(ROUND(ISNULL(cacct.ActStkFact, 0),2) as VARCHAR(20)) as 'Stock Facility (Actual)',
-	CAST(ROUND(ISNULL(cacct.ComStkFact, 0),2) as VARCHAR(20)) as 'Stock Facility (Committed)',
-	CAST(ROUND(ISNULL(cacct.ActOSBal, 0),2) as VARCHAR(20)) as 'O/S Balance (Actual)',
-	CAST(ROUND(ISNULL(cacct.ComOsBal, 0),2) as VARCHAR(20)) as 'O/S Balance (Committed)',
-	CAST(ROUND(ISNULL(cacct.ActLsr, 0),2) as VARCHAR(20)) as 'LSR % (Actual)',
-	CAST(ROUND(ISNULL(cacct.ComLSR,0),2) as VARCHAR(20)) as 'LSR % (Committed)', 
-	CAST(ROUND(ISNULL(cacct.ActShare, 0),2) as VARCHAR(20)) as 'Shares (Actual)', 
-	CAST(ROUND(ISNULL(cacct.comshare, 0),2) as VARCHAR(20)) as 'Shares (Committed)', 
-	CAST(ROUND(ISNULL(cacct.fdval, 0),2) as VARCHAR(20)) as 'FD Value', 
-	CAST(ROUND(ISNULL(cacct.comshare, 0) + ISNULL(cacct.PropVal, 0),2) as VARCHAR(20)) as 'Other Coll',
-	CAST(ROUND(ISNULL(cacct.TrdgBal,0),2) as VARCHAR(20)) as 'Trading Balance',
-	CAST(ROUND(ISNULL(cacct.CshMrgnBal,0),2) as VARCHAR(20)) as 'Cash / Margin Balance',
-	CAST(ROUND(ISNULL(cmst.ClntApprTrdgLmt, 0),2) as VARCHAR(20)) as 'Approved Trading Lmt',
-	CAST(ROUND(ISNULL(cacct.ActOSBal, 0),2) as VARCHAR(20)) as 'Available Balance',
-	CAST(ROUND(ISNULL(ClntODIntAcc, 0),2) as VARCHAR(20)) as 'OD INT ACC',
-	CAST(ROUND(ISNULL(ClntPCYODAcc, 0),2) as VARCHAR(20)) as 'PCY OD ACC',
-	CAST(cacct.VioPosition as VARCHAR(20)) as 'Position',
-	CAST(ROUND(ISNULL(cacct.MinShrSell,0),2) as VARCHAR(20)) as 'Min. Share to sell',
-	CAST(ROUND(ISNULL(cacct.ActOsBal, 0) - ISNULL(cmst.ClntCrLmt,0),2) as VARCHAR(20)) as 'Excesses Amt',
-	CAST(ROUND(ISNULL(cacct.MinCashTopUp,0),2) as VARCHAR(20)) as 'Min. Cash To Top Up',
-	CAST(ROUND(ISNULL(cacct.MinShrPledge,0),2) as VARCHAR(20)) as 'Min. Share To Pledge',
-	CAST(ROUND(ISNULL(cacct.ComOsBal, 0) - ISNULL(cmst.ClntCrLmt,0),2) as VARCHAR(20)) as 'Possible Excess Amt',
-	ISNULL(cmst.ClntBkAcNo,'') as 'A/C No',
-	ISNULL(cmst.ClntCrLmt,0) as 'Credit Limit',
-	CAST(ROUND(ISNULL(otrd.ComBuy,0),2) as VARCHAR(20)) as 'Total Committed Buy', 
-	CAST(ROUND(ISNULL(otrd.DirBuy,0),2) as VARCHAR(20)) as 'Direct Buy',
-	CAST(ROUND(ISNULL(otrd.OsSell,0),2) as VARCHAR(20)) as 'Outstanding Sell',
-	CAST(ROUND(ISNULL(otrd.Gain,0),2) as VARCHAR(20)) as 'Gain',
-	CAST(ROUND(ISNULL(otrd.Loss,0),2) as VARCHAR(20)) as 'Loss'
-FROM 
-	ClntMaster AS cmst WITH (NOLOCK)
-JOIN 
-	ClntActSumm As cacct WITH (NOLOCK) ON cacct.ClntTrdgCode = cmst.clntTrdgCode
-JOIN 
-	ClntCurrLmt AS clmt WITH (NOLOCK) ON clmt.ClntCode = cmst.ClntTrdgCode
-JOIN 
-	MstCoBrch AS mcbr WITH (NOLOCK) ON mcbr.CoBrchCode = cmst.CoBrchCode AND mcbr.CoCode = cmst.CoCode
-JOIN 
-	MstRegion AS mreg WITH (NOLOCK) ON mreg.RegionCode = mcbr.CoRegionCode
-FULL JOIN 
-	OsTradeSumm AS otrd WITH (NOLOCK) ON otrd.ClntTrdgCode = cmst.ClntTrdgCode
-LEFT JOIN 
-(
-  SELECT 
-    ClntCode, ContDate, SUM(ISNULL(ContClntBrkg, 0) - ISNULL(ContBrkgRebate, 0)) AS TotalBrkg
-  FROM  Contsumm WITH (NOLOCK) 
-  GROUP BY ClntCode, ContDate
-) A ON A.ClntCode = cmst.Clntcode AND DATEDIFF(dd, A.ContDate, @ProcDate) = 0
-LEFT JOIN
-(
-	SELECT 
-		SUM(ABS(ISNULL(ContVal,0))) as TOVR,
-		SUM(ISNULL(ContClntBrkg,0)) as BRKG,
-		ClntCode
-	FROM
-		Contsumm WITH (NOLOCK)
-	WHERE
-		DATEDIFF(yy, @ProcDate, contdate) = 0
-	GROUP BY
-		ClntCode
-) YR ON cmst.ClntTrdgCode = YR.ClntCode
-LEFT JOIN
-(
-	SELECT 
-		SUM(ABS(ISNULL(ContVal,0))) as TOVR,
-		SUM(ISNULL(ContClntBrkg,0)) as BRKG,
-		ClntCode
-	FROM
-		Contsumm WITH (NOLOCK)
-	WHERE
-		DATEDIFF(yy, @PrevYear, contdate) = 0
-	GROUP BY
-		ClntCode
-) PREVYR ON cmst.ClntTrdgCode = PREVYR.ClntCode
-WHERE 
-	RIGHT(cmst.ClntTrdgCode,3) != 'IST' AND cmst.ClntStat <> 'C'
-ORDER BY
-	cmst.ClntTrdgCode
+/* Get ProcessDate from the ProcessDate table */
+proc sql noprint;
+    select put(ProcessDate, date9.) into :ProcDate 
+    from DB_SMF.ProcessDate(obs=1);
+quit;
+
+/* Calculate Previous Year date */
+data _null_;
+    ProcDate_num = input("&ProcDate", date9.);
+    PrevYear_num = intnx('year', ProcDate_num, -1, 'same');
+    call symput('PrevYear', put(PrevYear_num, date9.));
+    call symput('ProcDate_num', put(ProcDate_num, 8.));
+    call symput('PrevYear_num', put(PrevYear_num, 8.));
+run;
+
+%put Process Date: &ProcDate (&ProcDate_num);
+%put Previous Year: &PrevYear (&PrevYear_num);
+
+/* Main query */
+proc sql;
+    create table result as
+    select 
+        coalesce(cmst.ClntTrdgCode, '') as Client_Code,
+        coalesce(cmst.ClntCDSNo, '') as CDS_AC_No,
+        coalesce(cmst.ProdCode, '') as Product_Type,
+        coalesce(mcbr.CoBrchCode, '') as Branch_Code,
+        coalesce(mcbr.CoRegionCode, '') as Region_Code,
+        put(round(coalesce(YR.TOVR, 0), 0.01), 20.2) as YTD_Turnover,
+        put(round(coalesce(PREVYR.TOVR, 0), 0.01), 20.2) as Previous_Year_Turnover,
+        put(round(coalesce(YR.BRKG, 0), 0.01), 20.2) as YTD_Brokerage,
+        put(round(coalesce(PREVYR.BRKG, 0), 0.01), 20.2) as Previous_Year_Brokerage,
+        case cmst.ClntStat 
+            when 'P' then 'Application pending review and approval'
+            when 'R' then 'Application rejected'
+            when 'A' then 'Application approved'
+            when 'B' then 'Suspend Purchases'
+            when 'S' then 'Suspend Sell'
+            when 'L' then 'Suspend Both Purchase And Sales'
+            when 'T' then 'Activated for trading'
+            when 'C' then 'Closed'
+        end as AC_Status,
+        put(round(coalesce(cacct.ActStkFact, 0), 0.01), 20.2) as Stock_Facility_Actual,
+        put(round(coalesce(cacct.ComStkFact, 0), 0.01), 20.2) as Stock_Facility_Committed,
+        put(round(coalesce(cacct.ActOSBal, 0), 0.01), 20.2) as OS_Balance_Actual,
+        put(round(coalesce(cacct.ComOsBal, 0), 0.01), 20.2) as OS_Balance_Committed,
+        put(round(coalesce(cacct.ActLsr, 0), 0.01), 20.2) as LSR_Pct_Actual,
+        put(round(coalesce(cacct.ComLSR, 0), 0.01), 20.2) as LSR_Pct_Committed,
+        put(round(coalesce(cacct.ActShare, 0), 0.01), 20.2) as Shares_Actual,
+        put(round(coalesce(cacct.comshare, 0), 0.01), 20.2) as Shares_Committed,
+        put(round(coalesce(cacct.fdval, 0), 0.01), 20.2) as FD_Value,
+        put(round(coalesce(cacct.comshare, 0) + coalesce(cacct.PropVal, 0), 0.01), 20.2) as Other_Coll,
+        put(round(coalesce(cacct.TrdgBal, 0), 0.01), 20.2) as Trading_Balance,
+        put(round(coalesce(cacct.CshMrgnBal, 0), 0.01), 20.2) as Cash_Margin_Balance,
+        put(round(coalesce(cmst.ClntApprTrdgLmt, 0), 0.01), 20.2) as Approved_Trading_Lmt,
+        put(round(coalesce(cacct.ActOSBal, 0), 0.01), 20.2) as Available_Balance,
+        put(round(coalesce(cmst.ClntODIntAcc, 0), 0.01), 20.2) as OD_INT_ACC,
+        put(round(coalesce(cmst.ClntPCYODAcc, 0), 0.01), 20.2) as PCY_OD_ACC,
+        put(cacct.VioPosition, 20.2) as Position,
+        put(round(coalesce(cacct.MinShrSell, 0), 0.01), 20.2) as Min_Share_to_sell,
+        put(round(coalesce(cacct.ActOsBal, 0) - coalesce(cmst.ClntCrLmt, 0), 0.01), 20.2) as Excesses_Amt,
+        put(round(coalesce(cacct.MinCashTopUp, 0), 0.01), 20.2) as Min_Cash_To_Top_Up,
+        put(round(coalesce(cacct.MinShrPledge, 0), 0.01), 20.2) as Min_Share_To_Pledge,
+        put(round(coalesce(cacct.ComOsBal, 0) - coalesce(cmst.ClntCrLmt, 0), 0.01), 20.2) as Possible_Excess_Amt,
+        coalesce(cmst.ClntBkAcNo, '') as AC_No,
+        put(coalesce(cmst.ClntCrLmt, 0), 20.2) as Credit_Limit,
+        put(round(coalesce(otrd.ComBuy, 0), 0.01), 20.2) as Total_Committed_Buy,
+        put(round(coalesce(otrd.DirBuy, 0), 0.01), 20.2) as Direct_Buy,
+        put(round(coalesce(otrd.OsSell, 0), 0.01), 20.2) as Outstanding_Sell,
+        put(round(coalesce(otrd.Gain, 0), 0.01), 20.2) as Gain,
+        put(round(coalesce(otrd.Loss, 0), 0.01), 20.2) as Loss
+    from 
+        DB_SMF.ClntMaster as cmst
+    inner join 
+        DB_SMF.ClntActSumm as cacct 
+        on cacct.ClntTrdgCode = cmst.ClntTrdgCode
+    inner join 
+        DB_SMF.ClntCurrLmt as clmt 
+        on clmt.ClntCode = cmst.ClntTrdgCode
+    inner join 
+        DB_SMF.MstCoBrch as mcbr 
+        on mcbr.CoBrchCode = cmst.CoBrchCode 
+        and mcbr.CoCode = cmst.CoCode
+    inner join 
+        DB_SMF.MstRegion as mreg 
+        on mreg.RegionCode = mcbr.CoRegionCode
+    left join 
+        DB_SMF.OsTradeSumm as otrd 
+        on otrd.ClntTrdgCode = cmst.ClntTrdgCode
+    left join 
+        (select 
+            ClntCode, 
+            ContDate, 
+            sum(coalesce(ContClntBrkg, 0) - coalesce(ContBrkgRebate, 0)) as TotalBrkg
+         from DB_SMF.Contsumm 
+         group by ClntCode, ContDate
+        ) as A 
+        on A.ClntCode = cmst.Clntcode 
+        and A.ContDate = &ProcDate_num
+    left join
+        (select 
+            sum(abs(coalesce(ContVal, 0))) as TOVR,
+            sum(coalesce(ContClntBrkg, 0)) as BRKG,
+            ClntCode
+         from DB_SMF.Contsumm
+         where year(ContDate) = year(&ProcDate_num)
+         group by ClntCode
+        ) as YR 
+        on cmst.ClntTrdgCode = YR.ClntCode
+    left join
+        (select 
+            sum(abs(coalesce(ContVal, 0))) as TOVR,
+            sum(coalesce(ContClntBrkg, 0)) as BRKG,
+            ClntCode
+         from DB_SMF.Contsumm
+         where year(ContDate) = year(&PrevYear_num)
+         group by ClntCode
+        ) as PREVYR 
+        on cmst.ClntTrdgCode = PREVYR.ClntCode
+    where 
+        cmst.ClntTrdgCode not like '%IST' 
+        and cmst.ClntStat ne 'C'
+    order by
+        cmst.ClntTrdgCode;
+quit;
+
+/* Display results */
+proc print data=result(obs=10);
+    title "First 10 Records of Client Trading Data";
+run;
+
+/* Check record count */
+proc sql;
+    select count(*) as Total_Records from result;
+quit;
