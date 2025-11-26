@@ -1,351 +1,268 @@
-USE DB_SMF
-GO
+/* Set the database/library context */
+libname DB_SMF '/your/library/path'; /* Update with actual path */
 
-SELECT 
-	dt.[Client Code],
-	dt.[Client Name],
-	dt.[New I/C Number],
-	dt.[Date of Birth],
-	dt.[Race],
-	dt.[Type],
-	dt.[Gender],
-	dt.[Nationality],
-	dt.[Address 1],
-	dt.[Address 2],
-	dt.[Address 3],
-	dt.[Address 4],
-	dt.[Postcode],
-	dt.[Occupation],
-	dt.[Salary],
-	dt.[Employer],
-	dt.[Office Address 1],
-	dt.[Office Address 2],
-	dt.[Office Address 3],
-	dt.[Office Address 4],
-	dt.[OffPostcode],
-	dt.[Correspondence Address],
-	dt.[Mobile Phone No],
-	dt.[Email Address],
-	dt.[Joint Name],
-	dt.[Joint I/C No],
-	dt.[Referrer Client Code],
-	dt.[Referrer Client Name],
-	dt.[Client Group],
-	dt.[Status],
-	dt.[Bank Account Number],
-	dt.[CDS No],
-	dt.[Share Trading Staff],
-	dt.[Product],
-	dt.[Branch Code],
-	dt.[Region Code],
-	CAST(ROUND(dt.[Brokerage Rate (1)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate (2)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate (3)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Minimum Brokerage (Offline)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate - Internet (1)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate - Internet (2)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate - Internet (3)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Minimum Brokerage (Online)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate (1)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate (2)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate (3)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Minimum Brokerage (Intraday Offline)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate - Internet (1)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate - Internet (2)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate - Internet (3)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Minimum Brokerage (Intraday Online)],2) as VARCHAR(20)),
-	dt.[Letter of Offer],
-	dt.[Application Date],
-	dt.[Date of Activation]
-FROM
-(
-SELECT
-	ROW_NUMBER() OVER(Partition by CM.ClntTrdgCode Order by ISNULL(XCM.ClntActvDate,CM.ClntApplDate)) as rn,
-	CM.ClntTrdgCode as 'Client Code',
-	ISNULL(CM.ClntName,'') as 'Client Name',
-	ISNULL(CM.ClntNICNo,'') as 'New I/C Number',
-	ISNULL(CONVERT(VARCHAR, CM.ClntDOB, 103),'') as 'Date of Birth',
-	ISNULL(CM.ClntRace,'') as 'Race',
-	ISNULL(CM.ClntType,'') as 'Type',
-	ISNULL(CM.ClntGen,'') as 'Gender',
-	ISNULL(CM.ClntNat,'') as 'Nationality',
-	ISNULL(CM.ClntAdd1,'') as 'Address 1',
-	ISNULL(CM.ClntAdd2,'') as 'Address 2',
-	ISNULL(CM.ClntAdd3,'') as 'Address 3',
-	ISNULL(CM.ClntAdd4,'') as 'Address 4',
-	ISNULL(CM.ClntPCode,'') as 'Postcode',
-	ISNULL(CM.ClntOccp,'') as 'Occupation',
-	ISNULL(SR.Description,'') as 'Salary',
-	ISNULL(CM.ClntEplyer,'') as 'Employer',
-	ISNULL(CM.ClntOffAdd1,'') as 'Office Address 1',
-	ISNULL(CM.ClntOffAdd2,'') as 'Office Address 2',
-	ISNULL(CM.ClntOffAdd3,'') as 'Office Address 3',
-	ISNULL(CM.ClntOffAdd4,'') as 'Office Address 4',
-	ISNULL(CM.ClntOffPCode,'') as 'OffPostcode',
-	ISNULL(CM.ClntCorspAdd,'') as 'Correspondence Address',
-	ISNULL(CM.ClntMPhone,'') as 'Mobile Phone No',
-	ISNULL(CM.ClntEmail,'') as 'Email Address',
-	ISNULL(CM.JointClntName,'') as 'Joint Name',
-	ISNULL(CM.JointClntNICNo,'') as 'Joint I/C No',
-	ISNULL(CM.RefClntCode,'') as 'Referrer Client Code',
-	ISNULL(CM.RefClntName,'') as 'Referrer Client Name',
-	ISNULL(CM.ClntGrp,'') as 'Client Group',
-	CASE CM.ClntStat 
-		WHEN 'P' THEN 'Application pending review and approval '
-		WHEN 'R' THEN 'Application rejected'
-		WHEN 'A' THEN 'Application approved '
-		WHEN 'B' THEN 'Suspend Purchases'
-		WHEN 'S' THEN 'Suspend Sell'
-		WHEN 'L' THEN 'Suspend Both Purchase And Sales'
-		WHEN 'T' THEN 'Activated for trading'
-		WHEN 'C' THEN 'Closed'
-	END as 'Status',
-	ISNULL(CM.ClntBkAcNo,'') as 'Bank Account Number',
-	ISNULL(CM.ClntCDSNo,'') as 'CDS No',
-	ISNULL(CM.OffInChrg,'') as 'Share Trading Staff',
-	ISNULL(CM.ProdCode,'') as 'Product',
-	ISNULL(mcbr.CoBrchCode,'') as 'Branch Code',
-	ISNULL(mcbr.CoRegionCode,'') as 'Region Code',
----Brokerage Offline-Starts
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrk WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=1
-	),0) as 'Brokerage Rate (1)',
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrk WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=2
-	),0) as 'Brokerage Rate (2)',
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrk WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=3
-	),0) as 'Brokerage Rate (3)',
-	ISNULL((
-		SELECT ISNULL(B1.BasedBrokerage,0)/100
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrk WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=1
-	),0) as 'Minimum Brokerage (Offline)',
----Brokerage Offline-Ends
----Brokerage Online-Starts
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=1
-	),0) as 'Brokerage Rate - Internet (1)',
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=2
-	),0) as 'Brokerage Rate - Internet (2)',
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=3
-	),0) as 'Brokerage Rate - Internet (3)',
-	ISNULL((
-		SELECT ISNULL(B1.BasedBrokerage,0)/100
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=1
-	),0) as 'Minimum Brokerage (Online)',
----Brokerage Online-Ends
----Brokerage Intraday Offline-Starts
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkIntr WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=1
-	),0) as 'Intraday Rate (1)',
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkIntr WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=2
-	),0) as 'Intraday Rate (2)',
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkIntr WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=3
-	),0) as 'Intraday Rate (3)',
-	ISNULL((
-		SELECT ISNULL(B1.BasedBrokerage,0)/100
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkIntr WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=1
-	),0) as 'Minimum Brokerage (Intraday Offline)',
----Brokerage Intraday Offline-Ends
----Brokerage Intraday Online-Starts
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkIntrOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=1
-	),0) as 'Intraday Rate - Internet (1)',
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkIntrOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=2
-	),0) as 'Intraday Rate - Internet (2)',
-	ISNULL((
-		SELECT ISNULL(B1.BrokerageRate,0)/10000
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkIntrOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=3
-	),0) as 'Intraday Rate - Internet (3)',
-	ISNULL((
-		SELECT ISNULL(B1.BasedBrokerage,0)/100
-		FROM
-		(
-			SELECT 
-			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
-			ClntTrdgCode,
-			BrokerageRate,
-			BasedBrokerage
-			FROM ClntBrkIntrOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
-		) B1
-		WHERE B1.rn=1
-	),0) as 'Minimum Brokerage (Intraday Online)',
----Brokerage Intraday Online-Ends
-	ISNULL(CONVERT(VARCHAR, CM.OfferDate, 103),'') as 'Letter of Offer',
-	ISNULL(CONVERT(VARCHAR, CM.ClntApplDate, 103),'') as 'Application Date',
-	ISNULL(CONVERT(VARCHAR, ISNULL(XCM.ClntActvDate,CM.ClntApplDate), 103),'') as 'Date of Activation'
-FROM
-	ClntMaster CM WITH (NOLOCK)
-JOIN 
-	MstCoBrch AS mcbr WITH (NOLOCK) ON mcbr.CoBrchCode = CM.CoBrchCode AND mcbr.CoCode = CM.CoCode
-JOIN 
-	MstRegion AS mreg WITH (NOLOCK) ON mreg.RegionCode = mcbr.CoRegionCode
-LEFT JOIN
-	(
-		SELECT 
-		DISTINCT (XCMN.ClntTrdgCode) AS ClntTrdgCode, XCMN.LogAction AS LogAction ,XCMN.ClntStat AS ClntStat,CAST(XCMN.LogDate AS DATE) AS ClntActvDate
-		FROM XLogClntMaster XCMO WITH (NOLOCK) 
-		INNER JOIN  XLogClntMaster XCMN WITH (NOLOCK) on XCMN.ClntTrdgCode = XCMO.ClntTrdgCode AND XCMO.LogAction = 'O' AND XCMO.ClntStat IS NULL 
-		WHERE XCMN.LogAction = 'N' AND XCMN.ClntStat = 'T' AND DATEDIFF(DAY,XCMO.LogDate,XCMN.LogDate) = 0 AND  DATEDIFF(DAY,XCMN.ClntApplDate,XCMN.LogDate)>=0
-	) XCM ON XCM.ClntTrdgCode = CM.ClntTrdgCode
-LEFT JOIN
-	MstSalaryRange SR WITH (NOLOCK) ON CM.SalaryCode = SR.Code
-WHERE
-	RIGHT(CM.ClntTrdgCode,3) != 'IST'
-) as dt
-WHERE
-	rn=1
-ORDER BY
-	1
+proc sql;
+    create table final_result as
+    select 
+        dt.Client_Code,
+        dt.Client_Name,
+        dt.New_IC_Number,
+        dt.Date_of_Birth,
+        dt.Race,
+        dt.Type,
+        dt.Gender,
+        dt.Nationality,
+        dt.Address_1,
+        dt.Address_2,
+        dt.Address_3,
+        dt.Address_4,
+        dt.Postcode,
+        dt.Occupation,
+        dt.Salary,
+        dt.Employer,
+        dt.Office_Address_1,
+        dt.Office_Address_2,
+        dt.Office_Address_3,
+        dt.Office_Address_4,
+        dt.OffPostcode,
+        dt.Correspondence_Address,
+        dt.Mobile_Phone_No,
+        dt.Email_Address,
+        dt.Joint_Name,
+        dt.Joint_IC_No,
+        dt.Referrer_Client_Code,
+        dt.Referrer_Client_Name,
+        dt.Client_Group,
+        dt.Status,
+        dt.Bank_Account_Number,
+        dt.CDS_No,
+        dt.Share_Trading_Staff,
+        dt.Product,
+        dt.Branch_Code,
+        dt.Region_Code,
+        put(round(dt.Brokerage_Rate_1, 0.01), 20.2) as Brokerage_Rate_1,
+        put(round(dt.Brokerage_Rate_2, 0.01), 20.2) as Brokerage_Rate_2,
+        put(round(dt.Brokerage_Rate_3, 0.01), 20.2) as Brokerage_Rate_3,
+        put(round(dt.Minimum_Brokerage_Offline, 0.01), 20.2) as Minimum_Brokerage_Offline,
+        put(round(dt.Brokerage_Rate_Internet_1, 0.01), 20.2) as Brokerage_Rate_Internet_1,
+        put(round(dt.Brokerage_Rate_Internet_2, 0.01), 20.2) as Brokerage_Rate_Internet_2,
+        put(round(dt.Brokerage_Rate_Internet_3, 0.01), 20.2) as Brokerage_Rate_Internet_3,
+        put(round(dt.Minimum_Brokerage_Online, 0.01), 20.2) as Minimum_Brokerage_Online,
+        put(round(dt.Intraday_Rate_1, 0.01), 20.2) as Intraday_Rate_1,
+        put(round(dt.Intraday_Rate_2, 0.01), 20.2) as Intraday_Rate_2,
+        put(round(dt.Intraday_Rate_3, 0.01), 20.2) as Intraday_Rate_3,
+        put(round(dt.Minimum_Brokerage_Intraday_Offline, 0.01), 20.2) as Minimum_Brokerage_Intraday_Offline,
+        put(round(dt.Intraday_Rate_Internet_1, 0.01), 20.2) as Intraday_Rate_Internet_1,
+        put(round(dt.Intraday_Rate_Internet_2, 0.01), 20.2) as Intraday_Rate_Internet_2,
+        put(round(dt.Intraday_Rate_Internet_3, 0.01), 20.2) as Intraday_Rate_Internet_3,
+        put(round(dt.Minimum_Brokerage_Intraday_Online, 0.01), 20.2) as Minimum_Brokerage_Intraday_Online,
+        dt.Letter_of_Offer,
+        dt.Application_Date,
+        dt.Date_of_Activation
+    from
+        (select
+            monotonic() as row_num,
+            case 
+                when calculated row_num = 1 then 1
+                when CM.ClntTrdgCode ne lag(CM.ClntTrdgCode) then 1
+                else 0
+            end as partition_start,
+            cm.ClntTrdgCode as Client_Code,
+            coalesce(CM.ClntName, '') as Client_Name,
+            coalesce(CM.ClntNICNo, '') as New_IC_Number,
+            coalesce(put(CM.ClntDOB, ddmmyy10.), '') as Date_of_Birth,
+            coalesce(CM.ClntRace, '') as Race,
+            coalesce(CM.ClntType, '') as Type,
+            coalesce(CM.ClntGen, '') as Gender,
+            coalesce(CM.ClntNat, '') as Nationality,
+            coalesce(CM.ClntAdd1, '') as Address_1,
+            coalesce(CM.ClntAdd2, '') as Address_2,
+            coalesce(CM.ClntAdd3, '') as Address_3,
+            coalesce(CM.ClntAdd4, '') as Address_4,
+            coalesce(CM.ClntPCode, '') as Postcode,
+            coalesce(CM.ClntOccp, '') as Occupation,
+            coalesce(SR.Description, '') as Salary,
+            coalesce(CM.ClntEplyer, '') as Employer,
+            coalesce(CM.ClntOffAdd1, '') as Office_Address_1,
+            coalesce(CM.ClntOffAdd2, '') as Office_Address_2,
+            coalesce(CM.ClntOffAdd3, '') as Office_Address_3,
+            coalesce(CM.ClntOffAdd4, '') as Office_Address_4,
+            coalesce(CM.ClntOffPCode, '') as OffPostcode,
+            coalesce(CM.ClntCorspAdd, '') as Correspondence_Address,
+            coalesce(CM.ClntMPhone, '') as Mobile_Phone_No,
+            coalesce(CM.ClntEmail, '') as Email_Address,
+            coalesce(CM.JointClntName, '') as Joint_Name,
+            coalesce(CM.JointClntNICNo, '') as Joint_IC_No,
+            coalesce(CM.RefClntCode, '') as Referrer_Client_Code,
+            coalesce(CM.RefClntName, '') as Referrer_Client_Name,
+            coalesce(CM.ClntGrp, '') as Client_Group,
+            case CM.ClntStat 
+                when 'P' then 'Application pending review and approval'
+                when 'R' then 'Application rejected'
+                when 'A' then 'Application approved'
+                when 'B' then 'Suspend Purchases'
+                when 'S' then 'Suspend Sell'
+                when 'L' then 'Suspend Both Purchase And Sales'
+                when 'T' then 'Activated for trading'
+                when 'C' then 'Closed'
+            end as Status,
+            coalesce(CM.ClntBkAcNo, '') as Bank_Account_Number,
+            coalesce(CM.ClntCDSNo, '') as CDS_No,
+            coalesce(CM.OffInChrg, '') as Share_Trading_Staff,
+            coalesce(CM.ProdCode, '') as Product,
+            coalesce(mcbr.CoBrchCode, '') as Branch_Code,
+            coalesce(mcbr.CoRegionCode, '') as Region_Code,
+            /* Brokerage Offline Rates */
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrk 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 1), 0) as Brokerage_Rate_1,
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrk 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 2), 0) as Brokerage_Rate_2,
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrk 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 3), 0) as Brokerage_Rate_3,
+            coalesce((select coalesce(B1.BasedBrokerage, 0)/100
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrk 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 1), 0) as Minimum_Brokerage_Offline,
+            /* Brokerage Online Rates */
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkOnl 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 1), 0) as Brokerage_Rate_Internet_1,
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkOnl 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 2), 0) as Brokerage_Rate_Internet_2,
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkOnl 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 3), 0) as Brokerage_Rate_Internet_3,
+            coalesce((select coalesce(B1.BasedBrokerage, 0)/100
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkOnl 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 1), 0) as Minimum_Brokerage_Online,
+            /* Intraday Offline Rates */
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkIntr 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 1), 0) as Intraday_Rate_1,
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkIntr 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 2), 0) as Intraday_Rate_2,
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkIntr 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 3), 0) as Intraday_Rate_3,
+            coalesce((select coalesce(B1.BasedBrokerage, 0)/100
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkIntr 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 1), 0) as Minimum_Brokerage_Intraday_Offline,
+            /* Intraday Online Rates */
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkIntrOnl 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 1), 0) as Intraday_Rate_Internet_1,
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkIntrOnl 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 2), 0) as Intraday_Rate_Internet_2,
+            coalesce((select coalesce(B1.BrokerageRate, 0)/10000
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkIntrOnl 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 3), 0) as Intraday_Rate_Internet_3,
+            coalesce((select coalesce(B1.BasedBrokerage, 0)/100
+                     from (select monotonic() as rn, ClntTrdgCode, BrokerageRate, BasedBrokerage
+                           from DB_SMF.ClntBrkIntrOnl 
+                           where ClntTrdgCode = CM.ClntTrdgCode
+                           order by FromAmt) as B1
+                     where B1.rn = 1), 0) as Minimum_Brokerage_Intraday_Online,
+            /* Dates */
+            coalesce(put(CM.OfferDate, ddmmyy10.), '') as Letter_of_Offer,
+            coalesce(put(CM.ClntApplDate, ddmmyy10.), '') as Application_Date,
+            coalesce(put(coalesce(XCM.ClntActvDate, CM.ClntApplDate), ddmmyy10.), '') as Date_of_Activation
+        from
+            DB_SMF.ClntMaster as CM
+        inner join 
+            DB_SMF.MstCoBrch as mcbr 
+            on mcbr.CoBrchCode = CM.CoBrchCode 
+            and mcbr.CoCode = CM.CoCode
+        inner join 
+            DB_SMF.MstRegion as mreg 
+            on mreg.RegionCode = mcbr.CoRegionCode
+        left join
+            (select 
+                distinct XCMN.ClntTrdgCode as ClntTrdgCode, 
+                XCMN.LogAction as LogAction,
+                XCMN.ClntStat as ClntStat,
+                datepart(XCMN.LogDate) as ClntActvDate
+            from 
+                DB_SMF.XLogClntMaster as XCMO
+            inner join  
+                DB_SMF.XLogClntMaster as XCMN 
+                on XCMN.ClntTrdgCode = XCMO.ClntTrdgCode 
+                and XCMO.LogAction = 'O' 
+                and XCMO.ClntStat is null
+            where 
+                XCMN.LogAction = 'N' 
+                and XCMN.ClntStat = 'T' 
+                and intck('day', datepart(XCMO.LogDate), datepart(XCMN.LogDate)) = 0 
+                and intck('day', datepart(XCMN.ClntApplDate), datepart(XCMN.LogDate)) >= 0
+            ) as XCM 
+            on XCM.ClntTrdgCode = CM.ClntTrdgCode
+        left join
+            DB_SMF.MstSalaryRange as SR 
+            on CM.SalaryCode = SR.Code
+        where
+            substr(reverse(trim(CM.ClntTrdgCode)), 1, 3) ne 'TSI'
+        ) as dt
+    where
+        dt.partition_start = 1
+    order by
+        dt.Client_Code;
+quit;
 
+/* Display sample results */
+proc print data=final_result(obs=10);
+    title "Client Master Data - First 10 Records";
+run;
+
+/* Check record count */
+proc sql;
+    select count(*) as Total_Records from final_result;
+quit;
