@@ -45,10 +45,18 @@ SELECT
 	CAST(ROUND(ISNULL(ClntPCYODAcc, 0),2) as VARCHAR(20)) as 'PCY OD ACC',
 	CAST(cacct.VioPosition as VARCHAR(20)) as 'Position',
 	CAST(ROUND(ISNULL(cacct.MinShrSell,0),2) as VARCHAR(20)) as 'Min. Share to sell',
-	CAST(ROUND(ISNULL(cacct.ActOsBal, 0) - ISNULL(cmst.ClntCrLmt,0),2) as VARCHAR(20)) as 'Excesses Amt',
+	/*CAST(ROUND(ISNULL(cacct.ActOsBal, 0) - ISNULL(cmst.ClntCrLmt,0),2) as VARCHAR(20)) as 'Excesses Amt',*/
+	CASE
+		WHEN (ISNULL(cacct.ActOsBal, 0) - ISNULL(cmst.ClntCrLmt,0)) <= 0 THEN CAST(ROUND(0,2) as VARCHAR(20))
+		ELSE CAST(ROUND(ISNULL(cacct.ActOsBal, 0) - ISNULL(cmst.ClntCrLmt,0),2) as VARCHAR(20))
+	END as 'Excesses Amt',
 	CAST(ROUND(ISNULL(cacct.MinCashTopUp,0),2) as VARCHAR(20)) as 'Min. Cash To Top Up',
 	CAST(ROUND(ISNULL(cacct.MinShrPledge,0),2) as VARCHAR(20)) as 'Min. Share To Pledge',
-	CAST(ROUND(ISNULL(cacct.ComOsBal, 0) - ISNULL(cmst.ClntCrLmt,0),2) as VARCHAR(20)) as 'Possible Excess Amt',
+/*	CAST(ROUND(ISNULL(cacct.ComOsBal, 0) - ISNULL(cmst.ClntCrLmt,0),2) as VARCHAR(20)) as 'Possible Excess Amt',*/
+CASE
+		WHEN (ISNULL(cacct.ComOsBal, 0) - ISNULL(cmst.ClntCrLmt,0)) <= 0 THEN CAST(ROUND(0,2) as VARCHAR(20))
+		ELSE CAST(ROUND(ISNULL(cacct.ComOsBal, 0) - ISNULL(cmst.ClntCrLmt,0),2) as VARCHAR(20))
+	END as 'Possible Excess Amt',
 	ISNULL(cmst.ClntBkAcNo,'') as 'A/C No',
 	ISNULL(cmst.ClntCrLmt,0) as 'Credit Limit',
 	CAST(ROUND(ISNULL(otrd.ComBuy,0),2) as VARCHAR(20)) as 'Total Committed Buy', 
