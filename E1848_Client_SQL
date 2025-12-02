@@ -38,22 +38,30 @@ SELECT
 	dt.[Product],
 	dt.[Branch Code],
 	dt.[Region Code],
-	CAST(ROUND(dt.[Brokerage Rate (1)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate (2)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate (3)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Minimum Brokerage (Offline)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate - Internet (1)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate - Internet (2)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Brokerage Rate - Internet (3)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Minimum Brokerage (Online)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate (1)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate (2)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate (3)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Minimum Brokerage (Intraday Offline)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate - Internet (1)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate - Internet (2)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Intraday Rate - Internet (3)],2) as VARCHAR(20)),
-	CAST(ROUND(dt.[Minimum Brokerage (Intraday Online)],2) as VARCHAR(20)),
+	CAST(ROUND(dt.[Brokerage Rate (1)],2) as VARCHAR(20)) as 'Brokerage Rate (1)',
+	CAST(ROUND(dt.[Brokerage Rate (2)],2) as VARCHAR(20)) as 'Brokerage Rate (2)',
+	CAST(ROUND(dt.[Brokerage Rate (3)],2) as VARCHAR(20)) as 'Brokerage Rate (3)',
+	CAST(ROUND(dt.[Minimum Brokerage (Offline 1)],2) as VARCHAR(20)) as 'Minimum Brokerage (Offline 1)',
+	CAST(ROUND(dt.[Minimum Brokerage (Offline 2)],2) as VARCHAR(20)) as 'Minimum Brokerage (Offline 2)',
+	CAST(ROUND(dt.[Minimum Brokerage (Offline 3)],2) as VARCHAR(20)) as 'Minimum Brokerage (Offline 3)',
+	CAST(ROUND(dt.[Brokerage Rate - Internet (1)],2) as VARCHAR(20)) as 'Brokerage Rate - Internet (1)',
+	CAST(ROUND(dt.[Brokerage Rate - Internet (2)],2) as VARCHAR(20)) as 'Brokerage Rate - Internet (2)',
+	CAST(ROUND(dt.[Brokerage Rate - Internet (3)],2) as VARCHAR(20)) as 'Brokerage Rate - Internet (3)',
+	CAST(ROUND(dt.[Minimum Brokerage (Online 1)],2) as VARCHAR(20)) as 'Minimum Brokerage (Online 1)',
+	CAST(ROUND(dt.[Minimum Brokerage (Online 2)],2) as VARCHAR(20)) as 'Minimum Brokerage (Online 2)',
+	CAST(ROUND(dt.[Minimum Brokerage (Online 3)],2) as VARCHAR(20)) as 'Minimum Brokerage (Online 3)',
+	CAST(ROUND(dt.[Intraday Rate (1)],2) as VARCHAR(20)) as 'Intraday Rate (1)',
+	CAST(ROUND(dt.[Intraday Rate (2)],2) as VARCHAR(20)) as 'Intraday Rate (2)',
+	CAST(ROUND(dt.[Intraday Rate (3)],2) as VARCHAR(20)) as 'Intraday Rate (3)',
+	CAST(ROUND(dt.[Minimum Brokerage (Intraday Offline 1)],2) as VARCHAR(20)) as 'Minimum Brokerage (Intraday Offline 1)',
+	CAST(ROUND(dt.[Minimum Brokerage (Intraday Offline 2)],2) as VARCHAR(20)) as 'Minimum Brokerage (Intraday Offline 2)',
+	CAST(ROUND(dt.[Minimum Brokerage (Intraday Offline 3)],2) as VARCHAR(20)) as 'Minimum Brokerage (Intraday Offline 3)',
+	CAST(ROUND(dt.[Intraday Rate - Internet (1)],2) as VARCHAR(20)) as 'Intraday Rate - Internet (1)',
+	CAST(ROUND(dt.[Intraday Rate - Internet (2)],2) as VARCHAR(20)) as 'Intraday Rate - Internet (2)',
+	CAST(ROUND(dt.[Intraday Rate - Internet (3)],2) as VARCHAR(20)) as 'Intraday Rate - Internet (2)',
+	CAST(ROUND(dt.[Minimum Brokerage (Intraday Online 1)],2) as VARCHAR(20)) as 'Minimum Brokerage (Intraday Online 1)',
+	CAST(ROUND(dt.[Minimum Brokerage (Intraday Online 2)],2) as VARCHAR(20)) as 'Minimum Brokerage (Intraday Online 2)',
+	CAST(ROUND(dt.[Minimum Brokerage (Intraday Online 3)],2) as VARCHAR(20)) as 'Minimum Brokerage (Intraday Online 3)',
 	dt.[Letter of Offer],
 	dt.[Application Date],
 	dt.[Date of Activation]
@@ -158,7 +166,33 @@ SELECT
 			FROM ClntBrk WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
 		) B1
 		WHERE B1.rn=1
-	),0) as 'Minimum Brokerage (Offline)',
+	),0) as 'Minimum Brokerage (Offline 1)',
+	ISNULL((
+		SELECT ISNULL(B1.BasedBrokerage,0)/100
+		FROM
+		(
+			SELECT 
+			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
+			ClntTrdgCode,
+			BrokerageRate,
+			BasedBrokerage
+			FROM ClntBrk WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
+		) B1
+		WHERE B1.rn=2
+	),0) as 'Minimum Brokerage (Offline 2)',
+	ISNULL((
+		SELECT ISNULL(B1.BasedBrokerage,0)/100
+		FROM
+		(
+			SELECT 
+			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
+			ClntTrdgCode,
+			BrokerageRate,
+			BasedBrokerage
+			FROM ClntBrk WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
+		) B1
+		WHERE B1.rn=3
+	),0) as 'Minimum Brokerage (Offline 3)',
 ---Brokerage Offline-Ends
 ---Brokerage Online-Starts
 	ISNULL((
@@ -212,7 +246,33 @@ SELECT
 			FROM ClntBrkOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
 		) B1
 		WHERE B1.rn=1
-	),0) as 'Minimum Brokerage (Online)',
+	),0) as 'Minimum Brokerage (Online 1)',
+	ISNULL((
+		SELECT ISNULL(B1.BasedBrokerage,0)/100
+		FROM
+		(
+			SELECT 
+			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
+			ClntTrdgCode,
+			BrokerageRate,
+			BasedBrokerage
+			FROM ClntBrkOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
+		) B1
+		WHERE B1.rn=2
+	),0) as 'Minimum Brokerage (Online 2)',
+	ISNULL((
+		SELECT ISNULL(B1.BasedBrokerage,0)/100
+		FROM
+		(
+			SELECT 
+			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
+			ClntTrdgCode,
+			BrokerageRate,
+			BasedBrokerage
+			FROM ClntBrkOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
+		) B1
+		WHERE B1.rn=3
+	),0) as 'Minimum Brokerage (Online 3)',
 ---Brokerage Online-Ends
 ---Brokerage Intraday Offline-Starts
 	ISNULL((
@@ -266,7 +326,33 @@ SELECT
 			FROM ClntBrkIntr WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
 		) B1
 		WHERE B1.rn=1
-	),0) as 'Minimum Brokerage (Intraday Offline)',
+	),0) as 'Minimum Brokerage (Intraday Offline 1)',
+	ISNULL((
+		SELECT ISNULL(B1.BasedBrokerage,0)/100
+		FROM
+		(
+			SELECT 
+			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
+			ClntTrdgCode,
+			BrokerageRate,
+			BasedBrokerage
+			FROM ClntBrkIntr WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
+		) B1
+		WHERE B1.rn=2
+	),0) as 'Minimum Brokerage (Intraday Offline 2)',
+	ISNULL((
+		SELECT ISNULL(B1.BasedBrokerage,0)/100
+		FROM
+		(
+			SELECT 
+			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
+			ClntTrdgCode,
+			BrokerageRate,
+			BasedBrokerage
+			FROM ClntBrkIntr WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
+		) B1
+		WHERE B1.rn=3
+	),0) as 'Minimum Brokerage (Intraday Offline 3)',
 ---Brokerage Intraday Offline-Ends
 ---Brokerage Intraday Online-Starts
 	ISNULL((
@@ -320,7 +406,33 @@ SELECT
 			FROM ClntBrkIntrOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
 		) B1
 		WHERE B1.rn=1
-	),0) as 'Minimum Brokerage (Intraday Online)',
+	),0) as 'Minimum Brokerage (Intraday Online 1)',
+	ISNULL((
+		SELECT ISNULL(B1.BasedBrokerage,0)/100
+		FROM
+		(
+			SELECT 
+			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
+			ClntTrdgCode,
+			BrokerageRate,
+			BasedBrokerage
+			FROM ClntBrkIntrOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
+		) B1
+		WHERE B1.rn=2
+	),0) as 'Minimum Brokerage (Intraday Online 2)',
+	ISNULL((
+		SELECT ISNULL(B1.BasedBrokerage,0)/100
+		FROM
+		(
+			SELECT 
+			ROW_NUMBER() OVER(ORDER BY FromAmt) as rn,
+			ClntTrdgCode,
+			BrokerageRate,
+			BasedBrokerage
+			FROM ClntBrkIntrOnl WITH (NOLOCK) WHERE ClntTrdgCode=CM.ClntTrdgCode
+		) B1
+		WHERE B1.rn=3
+	),0) as 'Minimum Brokerage (Intraday Online 3)',
 ---Brokerage Intraday Online-Ends
 	ISNULL(CONVERT(VARCHAR, CM.OfferDate, 103),'') as 'Letter of Offer',
 	ISNULL(CONVERT(VARCHAR, CM.ClntApplDate, 103),'') as 'Application Date',
@@ -348,4 +460,3 @@ WHERE
 	rn=1
 ORDER BY
 	1
-
